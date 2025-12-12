@@ -51,6 +51,38 @@ sudo systemctl enable ollama
 sudo launchctl load /Library/LaunchDaemons/com.ollama.ollama.plist
 ```
 
+### 2.4 卸载 Ollama
+
+#### macOS
+```bash
+# 使用 Homebrew 卸载
+brew uninstall ollama
+# 清理残留文件
+sudo rm -rf /Library/LaunchDaemons/com.ollama.ollama.plist
+sudo rm -rf /Library/Application\ Support/ollama
+rm -rf ~/.ollama
+```
+
+#### Linux
+```bash
+# 使用官方脚本卸载
+curl -fsSL https://ollama.com/uninstall.sh | sh
+# 或手动卸载
+sudo systemctl stop ollama
+sudo systemctl disable ollama
+sudo rm /etc/systemd/system/ollama.service
+sudo rm -rf /opt/ollama
+rm -rf ~/.ollama
+```
+
+#### Windows
+1. 打开「控制面板」→「程序和功能」
+2. 找到「Ollama」并点击「卸载」
+3. 按照卸载向导完成卸载
+4. 手动清理残留文件（可选）：
+   - 删除 `C:\Users\<用户名>\.ollama` 目录
+   - 删除 `C:\Program Files\Ollama` 目录（如果存在）
+
 ## 3. Ollama 基本命令
 
 ### 3.1 查看帮助
