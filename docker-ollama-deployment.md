@@ -170,7 +170,108 @@ sudo systemctl restart docker
 - 检查防火墙设置，确保 11434 端口开放
 - 对于云服务器，检查安全组规则
 
-## 6. 管理 Ollama 容器
+## 6. 使用 docker-compose 部署 Ollama（推荐）
+
+### 6.1 安装 docker-compose
+
+#### Ubuntu/Debian
+```bash
+sudo apt update
+sudo apt install -y docker-compose
+```
+
+#### CentOS/RHEL
+```bash
+sudo yum install -y epel-release
+sudo yum install -y python3-pip
+pip3 install docker-compose
+```
+
+#### macOS/Windows
+Docker Desktop 已包含 docker-compose，无需额外安装
+
+### 6.2 验证 docker-compose 安装
+
+```bash
+docker-compose --version
+```
+
+### 6.3 创建 docker-compose.yml 文件
+
+在项目目录下创建 `docker-compose.yml` 文件：
+
+```yaml
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: always
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - ollama-net
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: "8g"
+        reservations:
+          cpus: "2"
+          memory: "4g"
+
+  # 可选：Ollama Web UI
+  ollama-webui:
+    image: ghcr.io/ollama-webui/ollama-webui:main
+    container_name: ollama-webui
+    restart: always
+    depends_on:
+      - ollama
+    ports:
+      - "3000:8080"
+    environment:
+      - OLLAMA_API_BASE_URL=http://ollama:11434/api
+    networks:
+      - ollama-net
+
+volumes:
+  ollama:
+    driver: local
+
+networks:
+  ollama-net:
+    driver: bridge
+```
+
+### 6.4 使用 docker-compose 管理服务
+
+```bash
+# 启动服务（后台运行）
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f
+# 查看特定服务日志
+docker-compose logs -f ollama
+
+# 停止服务
+docker-compose down
+
+# 停止并删除数据卷
+docker-compose down -v
+
+# 更新镜像
+docker-compose pull
+docker-compose up -d
+```
+
+## 7. 传统 Docker 命令管理（备选）
 
 ```bash
 # 停止容器
@@ -193,7 +294,7 @@ docker rm ollama
 docker run -d ... ollama/ollama:latest
 ```
 
-## 7. 总结
+## 8. 总结
 
 通过 Docker 部署 Ollama 是一种简单、高效的方式，可以快速搭建本地大语言模型服务。本教程介绍了从环境准备到容器部署、模型使用的完整流程，以及常见问题的处理方法。
 
