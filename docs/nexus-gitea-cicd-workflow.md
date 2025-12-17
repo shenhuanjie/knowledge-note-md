@@ -783,52 +783,322 @@ EOF
 
 ## 6. 配置密钥
 
-1. 进入 Gitea 仓库 → **设置** → **密钥**
-2. 添加以下密钥：
-   - `NEXUS_USERNAME`: Nexus 用户名
-   - `NEXUS_PASSWORD`: Nexus 密码
+### 6.1 在 Gitea 中添加密钥
+
+1. **进入仓库设置**：
+   - 登录 Gitea
+   - 进入目标仓库 → 点击右侧 **设置**
+
+2. **添加密钥**：
+   - 点击左侧菜单 **密钥**
+   - 点击 **添加密钥**
+   - 填写密钥信息：
+     - **密钥名称**：`NEXUS_USERNAME`
+     - **密钥值**：填写 Nexus 用户名（如 `deployment`）
+     - **可见性**：选择 `私有`
+     - **事件类型**：选择 `推送` 和 `拉取请求`
+   - 点击 **添加密钥**
+
+3. **添加密码密钥**：
+   - 再次点击 **添加密钥**
+   - 填写密钥信息：
+     - **密钥名称**：`NEXUS_PASSWORD`
+     - **密钥值**：填写 Nexus 用户密码
+     - **可见性**：选择 `私有`
+     - **事件类型**：选择 `推送` 和 `拉取请求`
+   - 点击 **添加密钥**
+
+### 6.2 验证密钥配置
+- 确保密钥名称与工作流文件中使用的名称完全一致
+- 确保密钥值正确无误
+- 对于生产环境，建议定期更换密钥
 
 ## 7. 测试 CI/CD 工作流
 
-1. 将代码推送到 Gitea 仓库的 `main` 分支
-2. 进入仓库 → **Actions** 查看工作流运行状态
-3. 检查 Nexus 仓库中是否成功上传了 artifacts 或 Docker 镜像
+### 7.1 测试 Maven 项目
+
+1. **初始化并推送项目**：
+   ```bash
+   # 进入项目目录
+   cd demo-project
+   
+   # 初始化 Git 仓库
+   git init
+   
+   # 配置 Git 用户信息
+   git config user.name "Test User"
+   git config user.email "test@example.com"
+   
+   # 添加远程仓库
+   git remote add origin http://<gitea-ip>:3000/<owner>/demo-project.git
+   
+   # 添加文件并提交
+   git add .
+   git commit -m "Initial commit"
+   
+   # 推送代码到 main 分支
+   git push -u origin main
+   ```
+
+2. **查看工作流运行状态**：
+   - 进入 Gitea 仓库 → **Actions**
+   - 查看 `Maven CI/CD` 工作流的运行状态
+   - 点击工作流运行记录，查看详细日志
+
+3. **验证部署结果**：
+   - 访问 Nexus Web UI → **Browse** → **Repositories** → **maven-snapshots**
+   - 检查是否存在 `com/example/demo-project/1.0.0-SNAPSHOT` 目录
+   - 确认 JAR 文件已成功上传
+
+### 7.2 测试 Docker 项目
+
+1. **初始化并推送项目**：
+   ```bash
+   # 进入项目目录
+   cd docker-demo
+   
+   # 初始化 Git 仓库
+   git init
+   
+   # 配置 Git 用户信息
+   git config user.name "Test User"
+   git config user.email "test@example.com"
+   
+   # 添加远程仓库
+   git remote add origin http://<gitea-ip>:3000/<owner>/docker-demo.git
+   
+   # 添加文件并提交
+   git add .
+   git commit -m "Initial commit"
+   
+   # 推送代码到 main 分支
+   git push -u origin main
+   ```
+
+2. **查看工作流运行状态**：
+   - 进入 Gitea 仓库 → **Actions**
+   - 查看 `Docker CI/CD` 工作流的运行状态
+   - 点击工作流运行记录，查看详细日志
+
+3. **验证推送结果**：
+   - 访问 Nexus Web UI → **Browse** → **Repositories** → **docker-hosted**
+   - 检查是否存在 `demo/docker-demo` 镜像
+   - 确认镜像标签已正确生成
+
+4. **本地验证 Docker 镜像**：
+   ```bash
+   # 登录到 Nexus Docker 仓库
+   docker login -u <nexus-username> -p <nexus-password> http://<nexus-ip>:8082
+   
+   # 拉取镜像
+   docker pull <nexus-ip>:8082/demo/docker-demo:main
+   
+   # 运行镜像
+   docker run -d -p 8080:80 <nexus-ip>:8082/demo/docker-demo:main
+   
+   # 验证访问
+   curl http://localhost:8080
+   ```
 
 ## 8. 常见问题和解决方案
 
-### 8.1 Nexus 无法访问
-- 检查 Nexus 容器是否正在运行：`docker ps`
-- 检查防火墙设置，确保端口 8081、8082 等已开放
-- 检查 Nexus 日志：`docker logs nexus`
+### 8.1 Nexus 相关问题
 
-### 8.2 Gitea Actions 运行失败
-- 检查 Runner 是否在线：仓库 → **Actions** → **Runners**
-- 检查工作流日志，查看具体错误信息
-- 确保 Runner 服务器上已安装所需的依赖（如 Java、Docker 等）
+#### 8.1.1 Nexus 无法访问
+- **检查容器状态**：`docker ps | grep nexus`
+- **检查端口映射**：`docker port nexus`
+- **检查防火墙**：`sudo ufw status verbose`
+- **检查日志**：`docker logs -f nexus`
+- **检查内存使用**：`docker stats nexus`
 
-### 8.3 无法推送到 Nexus Docker 仓库
-- 检查 Docker 客户端配置，确保已添加 Nexus 仓库为不安全仓库（如果使用 HTTP）
-  - 在 `/etc/docker/daemon.json` 中添加：
-    ```json
-    {
-      "insecure-registries": ["<nexus-ip>:8082"]
-    }
-    ```
-  - 重启 Docker 服务：`systemctl restart docker`
-- 检查 Nexus Docker 仓库配置，确保 HTTP 端口已正确设置
+#### 8.1.2 无法登录 Nexus
+- 检查用户名和密码是否正确
+- 检查用户是否被锁定：**Security** → **Users** → 查看用户状态
+- 重置管理员密码：
+  ```bash
+  docker exec -it nexus /opt/sonatype/nexus/bin/nexus-admin-password-reset.sh
+  ```
+
+### 8.2 Gitea 相关问题
+
+#### 8.2.1 Gitea Actions 运行失败
+- **检查 Runner 状态**：仓库 → **Actions** → **Runners** → 确保 Runner 在线
+- **查看工作流日志**：点击失败的工作流 → 查看详细错误信息
+- **检查 Runner 日志**：
+  ```bash
+  sudo journalctl -u actions.runner.<owner>.<repo>.<runner-name>.service -f
+  ```
+
+#### 8.2.2 无法推送代码到 Gitea
+- 检查 Git 远程地址是否正确：`git remote -v`
+- 检查 SSH 密钥配置（如果使用 SSH）
+- 检查用户权限：确保用户有仓库推送权限
+- 检查 Gitea 日志：`docker logs -f gitea`
+
+### 8.3 Docker 相关问题
+
+#### 8.3.1 无法推送到 Nexus Docker 仓库
+- **配置 Docker 不安全仓库**：
+  ```bash
+  # 编辑 Docker 配置文件
+  sudo nano /etc/docker/daemon.json
+  
+  # 添加以下内容
+  {
+    "insecure-registries": ["<nexus-ip>:8082", "<nexus-ip>:8084"]
+  }
+  
+  # 重启 Docker 服务
+  sudo systemctl restart docker
+  ```
+
+- **检查 Nexus Docker 仓库配置**：
+  - 确保 HTTP 端口已正确设置
+  - 确保仓库状态为 **在线**
+
+- **检查推送命令**：确保使用正确的镜像名称格式
+  ```bash
+  # 正确格式
+  docker push <nexus-ip>:8082/<repository>/<image-name>:<tag>
+  ```
+
+#### 8.3.2 Docker Buildx 构建失败
+- 确保已安装 Docker Buildx：`docker buildx version`
+- 检查 Buildx 驱动配置：`docker buildx ls`
+- 重启 Buildx 服务：`docker buildx create --use`
+
+### 8.4 Maven 相关问题
+
+#### 8.4.1 无法部署到 Nexus
+- 检查 `pom.xml` 中的 `distributionManagement` 配置是否正确
+- 检查 Maven `settings.xml` 中的服务器配置
+- 检查 Nexus 用户是否有部署权限
+- 查看 Maven 构建日志：`mvn deploy -X`（开启调试模式）
 
 ## 9. 最佳实践
 
-1. **代码质量检查**: 在 CI 工作流中添加代码质量检查工具，如 SonarQube
-2. **安全扫描**: 添加依赖安全扫描，如 OWASP Dependency-Check
-3. **多环境部署**: 配置不同环境（开发、测试、生产）的部署流程
-4. **自动化测试**: 确保每个提交都运行自动化测试
-5. **版本管理**: 使用语义化版本控制，自动生成版本号
-6. **缓存优化**: 利用 Gitea Actions 缓存功能，加速构建过程
-7. **通知机制**: 配置构建结果通知（如邮件、Slack 等）
+### 9.1 安全性最佳实践
+- 使用强密码和定期更换密钥
+- 限制部署用户的权限范围
+- 启用 HTTPS 加密传输
+- 定期备份 Nexus 和 Gitea 数据
+- 使用私有仓库，避免敏感信息泄露
 
-## 10. 总结
+### 9.2 性能优化
+- 配置 Maven 和 Docker 缓存
+- 使用 Buildx 并行构建
+- 合理设置 Runner 资源限制
+- 定期清理旧的 Docker 镜像和 Maven artifacts
+- 使用 SSD 存储 Nexus 数据
 
-通过本文的配置，您已经成功构建了基于 Nexus + Gitea + Gitea Actions 的 CI/CD 工作流。这个工作流可以帮助您自动化构建、测试和部署过程，提高开发效率和代码质量。
+### 9.3 工作流设计最佳实践
+- 分离构建、测试和部署阶段
+- 使用矩阵构建支持多环境
+- 添加通知机制（邮件、Slack 等）
+- 实现蓝绿部署或滚动更新
+- 添加手动审批步骤（用于生产环境部署）
 
-您可以根据自己的项目需求，修改和扩展这个工作流，添加更多的功能和步骤。
+### 9.4 监控与日志
+- 监控 Nexus 和 Gitea 服务状态
+- 配置集中式日志管理
+- 监控构建成功率和时间
+- 设置告警机制
+
+## 10. 备份与恢复
+
+### 10.1 备份 Nexus 数据
+```bash
+# 停止 Nexus 服务
+docker-compose stop nexus
+
+# 备份数据目录
+sudo tar -czf nexus-backup-$(date +%Y%m%d).tar.gz /opt/nexus/data
+
+# 启动 Nexus 服务
+docker-compose start nexus
+```
+
+### 10.2 备份 Gitea 数据
+```bash
+# 停止 Gitea 服务
+docker-compose stop gitea
+
+# 备份数据目录
+sudo tar -czf gitea-backup-$(date +%Y%m%d).tar.gz /opt/gitea/data
+
+# 启动 Gitea 服务
+docker-compose start gitea
+```
+
+### 10.3 恢复数据
+```bash
+# 停止服务
+docker-compose stop
+
+# 恢复数据
+sudo tar -xzf backup-file.tar.gz -C /
+
+# 启动服务
+docker-compose start
+```
+
+## 11. 总结
+
+通过本文的详细配置，您已经成功构建了基于 Nexus + Gitea + Gitea Actions 的完整 CI/CD 工作流。这个工作流涵盖了从代码提交到构建、测试、部署的全流程自动化。
+
+### 主要实现内容
+
+1. **环境准备**：
+   - 安装 Docker 和 Docker Compose
+   - 配置防火墙和系统依赖
+
+2. **Nexus 配置**：
+   - 部署 Nexus 仓库管理器
+   - 配置 Maven 仓库（Releases、Snapshots、Proxy、Group）
+   - 配置 Docker 仓库（Hosted、Proxy、Group）
+   - 创建部署用户和权限
+
+3. **Gitea 配置**：
+   - 部署 Gitea 服务
+   - 初始化 Gitea 并启用 Actions 功能
+   - 创建用户和测试仓库
+
+4. **Gitea Actions 配置**：
+   - 配置自托管 Runner
+   - 安装必要依赖
+   - 配置 Runner 为系统服务
+
+5. **CI/CD 工作流示例**：
+   - Maven 项目：构建、测试、部署到 Nexus
+   - Docker 项目：构建、推送 Docker 镜像到 Nexus
+
+6. **密钥管理**：
+   - 在 Gitea 中安全管理 Nexus 访问凭证
+
+7. **测试与验证**：
+   - 完整的测试流程
+   - 结果验证方法
+
+8. **故障排除**：
+   - 常见问题和解决方案
+
+9. **最佳实践**：
+   - 安全性最佳实践
+   - 性能优化建议
+   - 工作流设计最佳实践
+   - 监控与日志管理
+
+10. **备份与恢复**：
+    - 数据备份策略
+    - 恢复流程
+
+### 后续扩展建议
+
+- 添加代码质量检查（如 SonarQube）
+- 集成安全扫描工具（如 OWASP Dependency-Check）
+- 实现多环境部署（开发、测试、生产）
+- 配置构建结果通知（邮件、Slack 等）
+- 实现蓝绿部署或滚动更新
+- 配置集中式日志管理
+
+这个 CI/CD 工作流可以根据您的项目需求进行灵活调整和扩展，帮助您提高开发效率、确保代码质量，并实现自动化部署。
