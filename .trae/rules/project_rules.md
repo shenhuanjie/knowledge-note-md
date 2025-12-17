@@ -1,0 +1,4 @@
+- 结论性的内容，同步生成 markdown 文件，标签为 `trae`，标题格式为 `[xxx类型] xxxxxx`
+- 其他内容，根据需要同步生成 markdown 文件，标签为 `trae`，标题格式为 `[xxx类型] xxxxxx`
+- 保证生成 markdown 文件的内容都是结论性的内容，且标签和标题格式正确
+- 生成的 markdown 文件，保存到项目的 `docs` 目录下
